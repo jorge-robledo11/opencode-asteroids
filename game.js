@@ -12,7 +12,7 @@ const justPressed = {};
 window.addEventListener('keydown', e => {
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code))
     e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -180,6 +180,8 @@ class ShootingStar {
 }
 
 // ── Ship ──────────────────────────────────────────────────────────────────────
+const SHIELD_DURATION = 5;
+
 class Ship {
   constructor() { this.reset(); }
 
@@ -196,6 +198,8 @@ class Ship {
     this.dead          = false;
     this.speedMultiplier = 1;
     this.speedTimer      = 0;
+    this.shielded        = false;
+    this.shieldTimer     = 0;
   }
 
   update(dt) {
@@ -205,6 +209,10 @@ class Ship {
     if (this.speedTimer    > 0) {
       this.speedTimer -= dt;
       if (this.speedTimer <= 0) { this.speedTimer = 0; this.speedMultiplier = 1; }
+    }
+    if (this.shieldTimer   > 0) {
+      this.shieldTimer -= dt;
+      if (this.shieldTimer <= 0) { this.shieldTimer = 0; this.shielded = false; }
     }
 
     const ROT   = 3.5;   // rad/s
@@ -264,6 +272,15 @@ class Ship {
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8,  4);
       ctx.strokeStyle = 'rgba(255, 130, 0, 0.85)';
+      ctx.stroke();
+    }
+
+    // ponytail: ring estático sin pulso; sumar Math.sin(t*8)*0.3 al alpha si querés feedback al recibir impacto
+    if (this.shielded) {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius + 7, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(120,200,255,0.7)';
+      ctx.lineWidth = 2;
       ctx.stroke();
     }
 
@@ -425,6 +442,10 @@ function update(dt) {
   }
 
   ship.update(dt);
+  if ((pressed('ShiftLeft') || pressed('ShiftRight')) && state === 'playing') {
+    ship.shielded = true;
+    ship.shieldTimer = SHIELD_DURATION;
+  }
   bullets.forEach(b => b.update(dt));
   asteroids.forEach(a => a.update(dt));
   particles.forEach(p => p.update(dt));
@@ -461,7 +482,7 @@ function update(dt) {
   bullets   = bullets.filter(b => !b.dead);
 
   // Nave vs asteroide
-  if (ship.invincible <= 0) {
+  if (ship.invincible <= 0 && !ship.shielded) {
     for (const a of asteroids) {
       if (dist(ship, a) < ship.radius + a.radius * 0.82) {
         killShip();
@@ -526,6 +547,10 @@ function drawHUD() {
   if (ship.speedTimer > 0) {
     ctx.textAlign = 'right';
     ctx.fillText(`VELOCIDAD ${ship.speedTimer.toFixed(1)}s`, W - 14, 44);
+  }
+  if (ship.shielded) {
+    ctx.textAlign = 'left';
+    ctx.fillText(`ESCUDO ${ship.shieldTimer.toFixed(1)}s`, 14, 44);
   }
 }
 
