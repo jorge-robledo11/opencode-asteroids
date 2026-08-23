@@ -275,13 +275,35 @@ function drawCohete(ctx, thrusting) {
   }
 }
 
+function drawMorada(ctx, thrusting) {
+  ctx.strokeStyle = '#b48cff';
+  ctx.lineWidth   = 1.8;
+  ctx.lineJoin    = 'round';
+  ctx.beginPath();
+  ctx.moveTo( 20,  0);
+  ctx.lineTo(-12, -9);
+  ctx.lineTo( -7,  0);
+  ctx.lineTo(-12,  9);
+  ctx.closePath();
+  ctx.stroke();
+  if (thrusting && Math.random() > 0.35) {
+    ctx.beginPath();
+    ctx.moveTo(-8, -4);
+    ctx.lineTo(-8 - rand(6, 14), 0);
+    ctx.lineTo(-8,  4);
+    ctx.strokeStyle = 'rgba(200, 130, 255, 0.85)';
+    ctx.stroke();
+  }
+}
+
 const SKIN_KEY   = 'asteroids.skin';
-const SKIN_ORDER = ['classic', 'delta', 'hex', 'cohete'];
+const SKIN_ORDER = ['classic', 'delta', 'hex', 'cohete', 'morada'];
 const SKINS = {
-  classic: { name: 'CLÁSICA', draw: drawClassic },
-  delta:   { name: 'DELTA',   draw: drawDelta   },
-  hex:     { name: 'HEX',     draw: drawHex     },
-  cohete:  { name: 'COHETE',  draw: drawCohete  },
+  classic: { name: 'CLÁSICA', draw: drawClassic, scale: 1, points: 1 },
+  delta:   { name: 'DELTA',   draw: drawDelta,   scale: 1, points: 1 },
+  hex:     { name: 'HEX',     draw: drawHex,     scale: 1, points: 1 },
+  cohete:  { name: 'COHETE',  draw: drawCohete,  scale: 1, points: 1 },
+  morada:  { name: 'MORADA',  draw: drawMorada,  scale: 2, points: 2 },
 };
 
 let currentSkin = (() => {
@@ -295,6 +317,7 @@ function setSkin(name) {
   if (!SKINS[name]) return;
   currentSkin = name;
   try { localStorage.setItem(SKIN_KEY, name); } catch (e) {}
+  if (ship && !ship.dead) ship.radius = 12 * SKINS[name].scale;
 }
 
 function cycleSkin() {
@@ -309,12 +332,13 @@ class Ship {
   constructor() { this.reset(); }
 
   reset() {
+    const scale = SKINS[currentSkin].scale;
     this.x      = W / 2;
     this.y      = H / 2;
     this.angle  = -Math.PI / 2;
     this.vx     = 0;
     this.vy     = 0;
-    this.radius = 12;
+    this.radius = 12 * scale;
     this.thrusting     = false;
     this.invincible    = 3;
     this.shootCooldown = 0;
@@ -366,7 +390,7 @@ class Ship {
   tryShoot() {
     if (this.shootCooldown > 0 || this.dead) return [];
     this.shootCooldown = 0.2;
-    const NOSE = 21;
+    const NOSE = 21 * SKINS[currentSkin].scale;
     const ox = this.x + Math.cos(this.angle) * NOSE;
     const oy = this.y + Math.sin(this.angle) * NOSE;
     if (this.tripleShotTimer > 0) {
@@ -384,9 +408,11 @@ class Ship {
   draw() {
     if (this.dead) return;
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
+    const scale = SKINS[currentSkin].scale;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
+    ctx.scale(scale, scale);
     SKINS[currentSkin].draw(ctx, this.thrusting);
     if (this.shielded) {
       ctx.beginPath();
@@ -584,13 +610,14 @@ function update(dt) {
   shootingStars = shootingStars.filter(s => !s.dead);
 
   // Bala vs asteroide
+  const POINT_MUL = SKINS[currentSkin].points;
   const newAsteroids = [];
   for (const b of bullets) {
     for (const a of asteroids) {
       if (!a.dead && !b.dead && dist(b, a) < a.radius) {
         b.dead = true;
         a.dead = true;
-        score += POINTS[a.size];
+        score += POINTS[a.size] * POINT_MUL;
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
         if (Math.random() < 0.12) {
@@ -603,7 +630,7 @@ function update(dt) {
       if (!s.dead && !b.dead && dist(b, s) < s.radius) {
         b.dead = true;
         s.dead = true;
-        score += 300;
+        score += 300 * POINT_MUL;
       }
     }
   }
