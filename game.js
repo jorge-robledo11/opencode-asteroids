@@ -510,6 +510,7 @@ function initGame() {
   level  = 1;
   state  = 'playing';
   spawnAsteroids(4);
+  spawnShootingStar();
 }
 
 function nextLevel() {
@@ -567,7 +568,7 @@ function update(dt) {
   }
 
   ship.update(dt);
-  if ((pressed('ShiftLeft') || pressed('ShiftRight')) && state === 'playing') {
+  if ((keys['ShiftLeft'] || keys['ShiftRight']) && state === 'playing') {
     ship.shielded = true;
     ship.shieldTimer = SHIELD_DURATION;
   }
@@ -592,8 +593,8 @@ function update(dt) {
         score += POINTS[a.size];
         explode(a.x, a.y, a.size * 5);
         newAsteroids.push(...a.split());
-        if (Math.random() < 0.08) {
-          const t = Math.random() < 0.5 ? 'speed' : 'triple';
+        if (Math.random() < 0.12) {
+          const t = Math.random() < 0.3 ? 'speed' : 'triple';
           powerUps.push(new PowerUp(a.x, a.y, t));
         }
       }
