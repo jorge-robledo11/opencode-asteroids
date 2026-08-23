@@ -12,7 +12,7 @@ const justPressed = {};
 window.addEventListener('keydown', e => {
   justPressed[e.code] = !keys[e.code];
   keys[e.code] = true;
-  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code))
+  if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ShiftLeft', 'ShiftRight'].includes(e.code))
     e.preventDefault();
 });
 window.addEventListener('keyup', e => { keys[e.code] = false; });
@@ -303,6 +303,8 @@ function cycleSkin() {
 }
 
 // ── Ship ──────────────────────────────────────────────────────────────────────
+const SHIELD_DURATION = 5;
+
 class Ship {
   constructor() { this.reset(); }
 
@@ -317,9 +319,11 @@ class Ship {
     this.invincible    = 3;
     this.shootCooldown = 0;
     this.dead          = false;
-    this.speedMultiplier    = 1;
-    this.speedTimer         = 0;
-    this.tripleShotTimer    = 0;
+    this.speedMultiplier = 1;
+    this.speedTimer      = 0;
+    this.tripleShotTimer = 0;
+    this.shielded        = false;
+    this.shieldTimer     = 0;
   }
 
   update(dt) {
@@ -333,6 +337,10 @@ class Ship {
     if (this.tripleShotTimer > 0) {
       this.tripleShotTimer -= dt;
       if (this.tripleShotTimer <= 0) this.tripleShotTimer = 0;
+    }
+    if (this.shieldTimer   > 0) {
+      this.shieldTimer -= dt;
+      if (this.shieldTimer <= 0) { this.shieldTimer = 0; this.shielded = false; }
     }
 
     const ROT   = 3.5;   // rad/s
@@ -380,6 +388,13 @@ class Ship {
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
     SKINS[currentSkin].draw(ctx, this.thrusting);
+    if (this.shielded) {
+      ctx.beginPath();
+      ctx.arc(0, 0, this.radius + 7, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(120,200,255,0.7)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
     ctx.restore();
   }
 }
@@ -552,6 +567,10 @@ function update(dt) {
   }
 
   ship.update(dt);
+  if ((pressed('ShiftLeft') || pressed('ShiftRight')) && state === 'playing') {
+    ship.shielded = true;
+    ship.shieldTimer = SHIELD_DURATION;
+  }
   bullets.forEach(b => b.update(dt));
   asteroids.forEach(a => a.update(dt));
   particles.forEach(p => p.update(dt));
@@ -591,7 +610,7 @@ function update(dt) {
   bullets   = bullets.filter(b => !b.dead);
 
   // Nave vs asteroide
-  if (ship.invincible <= 0) {
+  if (ship.invincible <= 0 && !ship.shielded) {
     for (const a of asteroids) {
       if (dist(ship, a) < ship.radius + a.radius * 0.82) {
         killShip();
@@ -656,6 +675,10 @@ function drawHUD() {
   if (ship.tripleShotTimer > 0) {
     ctx.textAlign = 'right';
     ctx.fillText(`TRIPLE ${ship.tripleShotTimer.toFixed(1)}s`, W - 14, 60);
+  }
+  if (ship.shielded) {
+    ctx.textAlign = 'left';
+    ctx.fillText(`ESCUDO ${ship.shieldTimer.toFixed(1)}s`, 14, 44);
   }
 
   ctx.textAlign = 'left';
